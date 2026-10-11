@@ -1,0 +1,27 @@
+{
+  "name": "menu-agent-assignment",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "agent": "tsx scripts/run-agent.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
+    "@vitejs/plugin-react": "^5.0.2",
+    "typescript": "~5.8.3",
+    "vite": "^7.1.7",
+    "vitest": "^3.2.4",
+    "tsx": "^4.19.2",
+    "@types/node": "^22.18.0"
+  }
+}

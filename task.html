@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Task: menu agent</title>
+  <style>
+    :root { --ink:#1a1a1a; --muted:#5c5c5c; --line:#d9d9d9; --paper:#fff; --wash:#f6f6f4; --accent:#1f4d3a; }
+    * { box-sizing: border-box; }
+    body { margin:0; color:var(--ink); background:var(--wash); font:16px/1.45 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width:40rem; margin:2rem auto; padding:2rem 1.75rem 2.5rem; background:var(--paper); border:1px solid var(--line); }
+    h1 { font-size:1.35rem; font-weight:650; letter-spacing:-0.02em; margin:0 0 0.75rem; }
+    h2 { font-size:0.8rem; font-weight:650; letter-spacing:0.06em; text-transform:uppercase; color:var(--accent); margin:1.75rem 0 0.6rem; padding-top:1rem; border-top:1px solid var(--line); }
+    p, li { margin:0 0 0.6rem; }
+    .meta { display:grid; grid-template-columns:6.5rem 1fr; gap:0.2rem 0.75rem; font-size:0.9rem; color:var(--muted); margin:0 0 1.25rem; }
+    .meta b { color:var(--ink); font-weight:600; }
+    ol { padding-left:1.25rem; }
+    ol.steps > li { margin-bottom:0.85rem; }
+    code { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:0.86em; }
+    table { width:100%; border-collapse:collapse; font-size:0.9rem; margin:0.5rem 0 0.75rem; }
+    th, td { text-align:left; padding:0.4rem 0.5rem; border-bottom:1px solid var(--line); vertical-align:top; }
+    th { font-weight:600; background:var(--wash); }
+    .sub { margin:0.4rem 0 0; padding-left:1.1rem; color:var(--muted); font-size:0.92rem; }
+    @media print { body { background:#fff; } main { margin:0; border:0; padding:0; max-width:none; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Task: menu agent</h1>
+    <div class="meta">
+      <span>Stack</span><b>Your choice</b>
+      <span>Time</span><b>About a day. You name the send-by time.</b>
+      <span>Agents</span><b>Allowed. Commit your <code>AGENTS.md</code> (or equivalent) and a short <code>AI-NOTES.md</code>: where the AI was wrong and what you verified yourself. The fixtures win over the notes.</b>
+    </div>
+
+    <h2>Problem</h2>
+    <p>Mobile, web and kiosk each fetch a raw catalog and apply schedule, stock, price and tax rules themselves, and the rules have drifted. Put them behind one <strong>menu agent</strong>, so the same call can run in the app today and on a server later without changing the UI.</p>
+    <p>Use only the attached <code>fixtures/</code>. No live vendor and no third-party mock service.</p>
+
+    <h2>Build</h2>
+    <ol class="steps">
+      <li>
+        <code>resolve(ctx) → { catalog, visible, prices, oos }</code>
+        <p class="sub"><code>ctx</code>: <code>store_id</code>, <code>now</code>, <code>timezone</code>, optional <code>preorder_slot</code>. If a preorder slot is set, judge the schedule at the slot, not at <code>now</code>.</p>
+        <ul class="sub">
+          <li><code>catalog</code>: categories, items and modifiers by id</li>
+          <li><code>visible</code>: delivery <em>and</em> collection trees; out-of-stock and off-schedule items excluded</li>
+          <li><code>prices[order_type][item_id] = { gross, tax }</code>, integer cents, visible items only</li>
+          <li><code>oos</code>: ids that cannot be sold</li>
+        </ul>
+      </li>
+      <li>
+        <strong>Tax.</strong> Use the rate and the inclusive/exclusive flag from <code>store.json</code>, and each item's <code>tax_class</code>. <code>gross</code> is what the guest pays and <code>tax</code> is the part of it that is tax. Round tax to the nearest cent per item, half up.
+      </li>
+      <li>
+        <strong>Modes</strong>, chosen by the <code>menu_agent_mode</code> flag:
+        <table>
+          <thead><tr><th>Flag</th><th>Schedule, stock</th><th>Price, tax</th></tr></thead>
+          <tbody>
+            <tr><td><code>local</code></td><td>client</td><td>client</td></tr>
+            <tr><td><code>hybrid</code></td><td>server</td><td>client</td></tr>
+            <tr><td><code>remote</code></td><td>server</td><td>server</td></tr>
+          </tbody>
+        </table>
+        The server can be your own local process or an in-process stub with fail and delay switches. Any server call has a <strong>3s total budget</strong>. On failure or timeout, run <code>local</code> on the last cached catalog, recomputed for the current time. Never return an empty menu because the network failed. With no cache at all, show an error state. Changing the flag must not need a code change.
+      </li>
+      <li>Search, theme and scrolling stay in the client. They are not agent work.</li>
+      <li>
+        <strong>Inspector UI.</strong> Pick mode, order type and time (including a preorder slot). List the visible items with price and tax shown as money, not cents. Show the mode used and whether this result was a fallback. Include a switch that makes the server fail. Put mode and order type in the query string (deep-link params in Expo). It must work at 390px wide with no horizontal scroll. Web or Expo (React Native) are both fine. If Expo, add 2–3 Maestro flows: server failing still shows a menu marked as fallback, a preorder slot changes what's visible, and switching mode updates the result.
+      </li>
+      <li><strong>Mapping table</strong> (fixture field → your field) and a <strong>conflicts log</strong>: a keep, reject or rewrite verdict on every note below, each with a pointer to a fixture.</li>
+      <li><strong>Tests</strong>: schedule in the store's timezone, preorder slot, out of stock, delivery vs collection price, tax (inclusive, exempt, rounding), 3s fallback, cache recompute.</li>
+    </ol>
+
+    <h2>Working notes (unverified)</h2>
+    <ol>
+      <li>If the dump already has <code>visible</code>, skip the schedule check.</li>
+      <li>Put text search in the agent so every surface matches.</li>
+      <li>In hybrid, the server prices and the client filters, because pricing is the expensive part.</li>
+      <li>If the server fails, return an empty menu so we never sell stale stock.</li>
+      <li>Retry the server 3 times, 3s each, before falling back.</li>
+      <li><code>available: true</code> is enough to show an item.</li>
+      <li>Dump prices are dollars; multiply by 100.</li>
+      <li>Store time is UTC; ignore the timezone.</li>
+      <li>Delivery and collection share one price.</li>
+      <li>Dump prices exclude tax; add GST on top.</li>
+      <li>Every item takes the store tax rate.</li>
+      <li>Truncate tax to whole cents.</li>
+      <li>For preorders, check the schedule at <code>now</code>.</li>
+    </ol>
+
+    <h2>Handback</h2>
+    <p>A repo link, and a README that fits on one screen: the two commands you actually ran (agent and inspector) and what you did not build.</p>
+    <p>All thirteen notes in the conflicts log. Do not add auth, NLP, deployment or more stores.</p>
+    <p>Send by the time you named, or say that you missed it.</p>
+  </main>
+</body>
+</html>

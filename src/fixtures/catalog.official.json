@@ -1,0 +1,71 @@
+{
+  "store_id": "s1",
+  "fetched_at": "2026-10-06T03:00:00Z",
+  "categories": [
+    { "id": "cat_lunch", "name": "Lunch", "item_ids": ["item_lunch", "item_burger"] },
+    { "id": "cat_all_day", "name": "All day", "item_ids": ["item_burger", "item_water", "item_soldout"] }
+  ],
+  "items": {
+    "item_lunch": {
+      "id": "item_lunch",
+      "name": "Lunch bowl",
+      "schedule": { "days": ["mon", "tue", "wed", "thu", "fri"], "start": "11:00", "end": "14:30" },
+      "stock": 12,
+      "available": true,
+      "tax_class": "standard",
+      "placements": {
+        "delivery": { "price": 1450 },
+        "collection": { "price": 1450 }
+      }
+    },
+    "item_burger": {
+      "id": "item_burger",
+      "name": "Smash burger",
+      "schedule": null,
+      "stock": 40,
+      "available": true,
+      "tax_class": "standard",
+      "modifier_ids": ["mod_patty"],
+      "placements": {
+        "delivery": { "price": 1299 },
+        "collection": { "price": 1099 }
+      }
+    },
+    "item_water": {
+      "id": "item_water",
+      "name": "Still water",
+      "schedule": null,
+      "stock": 100,
+      "available": true,
+      "tax_class": "exempt",
+      "placements": {
+        "delivery": { "price": 300 },
+        "collection": { "price": 300 }
+      }
+    },
+    "item_soldout": {
+      "id": "item_soldout",
+      "name": "Sticky pudding",
+      "schedule": null,
+      "stock": 0,
+      "available": true,
+      "tax_class": "standard",
+      "placements": {
+        "delivery": { "price": 800 },
+        "collection": { "price": 800 }
+      }
+    }
+  },
+  "modifiers": {
+    "mod_patty": {
+      "id": "mod_patty",
+      "name": "Extra patty",
+      "price": 200,
+      "external_ref": 9007199254740993
+    }
+  },
+  "visible": {
+    "delivery": ["item_lunch", "item_burger", "item_water", "item_soldout"],
+    "collection": ["item_lunch", "item_burger", "item_water", "item_soldout"]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "context": "context.sample.json",
+  "visible": {
+    "delivery": ["item_lunch", "item_burger", "item_water", "item_soldout"],
+    "collection": ["item_lunch", "item_burger", "item_water", "item_soldout"]
+  },
+  "prices": {
+    "delivery": {
+      "item_lunch": { "gross": 1595, "tax": 145 },
+      "item_burger": { "gross": 1429, "tax": 130 },
+      "item_water": { "gross": 330, "tax": 30 },
+      "item_soldout": { "gross": 880, "tax": 80 }
+    },
+    "collection": {
+      "item_lunch": { "gross": 1595, "tax": 145 },
+      "item_burger": { "gross": 1429, "tax": 130 },
+      "item_water": { "gross": 330, "tax": 30 },
+      "item_soldout": { "gross": 880, "tax": 80 }
+    }
+  },
+  "oos": []
+}

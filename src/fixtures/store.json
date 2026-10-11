@@ -1,0 +1,7 @@
+{
+  "store_id": "s1",
+  "timezone": "Australia/Sydney",
+  "currency": "AUD",
+  "menu_agent_mode": "local",
+  "tax": { "rate_bp": 1000, "inclusive": true }
+}
