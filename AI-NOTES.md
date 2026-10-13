@@ -1,30 +1,44 @@
-# AI notes and verification record
+# AI use and verification record
 
-AI assistance was used to scaffold the resolver, inspector, test plan, and documentation. These notes distinguish source-confirmed facts from implementation choices.
+## AI assistance used
 
-## Where AI initially got things wrong / risks caught during review
+AI assistance was used to scaffold and review the TypeScript resolver, React inspector, domain tests, and project documentation. The current documentation audit compared claims with the checked-in implementation, fixtures, assignment brief, and executed commands; it did not change domain logic, fixtures, or tests.
 
-- The provided `resolve-local.sample.json` must not be treated as a golden output: it includes the zero-stock pudding, includes lunch at 11 PM Sydney time, gives water a tax charge despite `tax_class: exempt`, adds tax despite `inclusive: true`, and gives delivery/collection the same burger price.
-- The catalog dump is not valid strict JSON because of a trailing comma after the second category. A working copy removes that syntax error only.
-- The modifier `external_ref` value `9007199254740993` exceeds JavaScript's safe-integer limit. The parser preserves its exact digits as a string at the app boundary instead of silently rounding it.
-- Server retries would violate the 3-second total budget. The resolver makes one server call and falls back when that call fails or exceeds the deadline.
+## Incorrect suggestions or assumptions rejected
 
-## Verified against supplied fixtures
+- `src/fixtures/resolve-local.sample.json` is not a golden result. Compared with `catalog.official.json` and `store.json`, it includes a zero-stock item, includes lunch outside its sample-time schedule, adds tax to an exempt item, adds tax to tax-inclusive prices, and loses the delivery/collection burger price difference.
+- Catalog-level `visible` is stale input, not resolver output. `resolveAvailability` recomputes it.
+- Retries would violate the brief's single 3-second server budget; `resolveMenu` makes one server operation before fallback.
+- `external_ref: 9007199254740993` cannot safely be represented as a JavaScript number. `parseCatalogFixture` quotes it before parsing and exposes it as a string.
+- Earlier documentation incorrectly said unknown runtime tax classes fail validation. `calculatePriceAndTax` only special-cases `exempt`; another runtime value uses the standard-rate branch.
 
-- `store.json`: `Australia/Sydney`, AUD, 1000 basis points (10%), tax-inclusive.
-- In `context.sample.json`, the evaluation instant is 23:00 Tuesday in Sydney. `item_lunch` is off-schedule; `item_soldout` has zero stock. Delivery/collection therefore contain the burger and water only.
-- In `context.preorder.sample.json`, the slot is 12:30 Wednesday in Sydney. Lunch is scheduled and becomes visible; pudding remains excluded for zero stock.
-- Inclusive tax results at that preorder slot: lunch gross 1450/tax 132 cents; burger delivery gross 1299/tax 118 cents; burger collection gross 1099/tax 100 cents; water gross 300/tax 0.
-- Resolver tests cover local timezone schedule boundaries, preorder override, out-of-stock exclusion, order-type price differences, inclusive/exempt/rounding tax behavior, a 3-second timeout fallback, and failure with no cache.
+## Facts confirmed from fixtures
 
-## Implementation choices to explain in the follow-up
+- `src/fixtures/store.json` defines store `s1`, `Australia/Sydney`, `AUD`, local default mode, and tax-inclusive 1,000 basis-point tax.
+- At `context.sample.json` (23:00 Tuesday Sydney), `item_lunch` is outside its 11:00–14:30 schedule and `item_soldout` has stock 0. Burger and water are visible in both order types.
+- `context.preorder.sample.json` evaluates at 12:30 Wednesday Sydney, so lunch joins burger and water; `item_soldout` remains in `oos`.
+- At that preorder slot, fixture-backed output is: lunch 1450 gross/132 tax; burger 1299/118 delivery and 1099/100 collection; water 300/0.
 
-- Schedule windows are start-inclusive/end-exclusive. The provided schedules are same-day ranges; overnight ranges are rejected instead of guessed.
-- `oos` contains globally unsellable stock/availability IDs; a scheduled item outside its selling window is omitted from `visible` but is not mislabeled as out of stock.
-- The server is an in-process stub, explicitly allowed by the brief; it uses the same pure domain engine behind separate local/server adapters. A live API, auth, and persistent cache are intentionally not built.
+## Current implementation decisions and limitations
 
-## Verification record
+- Resolver visible-ID order follows the catalog item-map insertion order. The inspector later groups visible IDs through category `item_ids`, so burger can appear in both supplied categories.
+- Schedules are start-inclusive/end-exclusive, reject end times at or before start times, and do not support overnight windows.
+- `oos` records only items rejected by availability or stock; scheduled-out items are omitted from `visible` but not added to `oos`.
+- Modifiers are normalized and returned in the catalog, but neither modifier reference validity nor modifier price selection is implemented.
+- The server is an in-process stub that uses the same domain functions as local mode. A timeout races the result but does not cancel the underlying stub operation.
+- The inspector has fixed-store, in-memory cache state. It has no persistent cache, live API/backend, multiple stores, authentication, checkout, or mobile/Expo implementation.
 
-- The domain TypeScript files compiled with the globally available TypeScript compiler, and a Node runtime smoke check confirmed the sample and preorder visibility, tax values, exact `external_ref`, failure fallback, and no-cache error.
-- A full `npm install` / Vite build / Vitest run could not be completed in the generation environment because the npm registry request failed with a network DNS error. Do not claim those checks passed until they run successfully on the submission machine.
-- Before sending the repo, run `npm install`, `npm test`, `npm run build`, `npm run agent`, and `npm run dev`. Check the inspector at a 390px viewport and verify mode/order-type query parameters. Update this note with the actual outcomes.
+## Verification executed on 2026-10-13
+
+| Command | Outcome |
+|---|---|
+| `npm install` | Not run: dependencies were already present and no install was needed for the checks. |
+| `npm test` | Passed: 1 test file, 14 tests. The suite includes schedule boundaries, preorder behavior, stock, pricing, inclusive/exempt/half-up tax, hybrid/remote routing, timeout fallback, and remote no-cache error. |
+| `npm run build` | Passed. Vite warned that Node 18.17.0 is below its requested Node 20.19+ or 22.12+, but TypeScript and the production build completed. |
+| `npm run agent` | Passed after allowing `tsx` to create its local IPC socket. It printed the preorder output described above. |
+| `npm run dev -- --host 127.0.0.1` | Failed before starting a server: Node 18.17.0 lacks `crypto.hash`, used by installed Vite 7.3.7. |
+
+## Checks still incomplete
+
+- Browser interaction, query-parameter updates, fallback rendering, and the 390px viewport were not manually verified because the development server could not start with the available Node version.
+- No Expo/Maestro check applies because this repository is a web implementation and supplies no Expo app or flows.

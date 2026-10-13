@@ -1,19 +1,19 @@
 # Working-notes conflicts log
 
-The assignment says the fixtures and build requirements override these unverified notes. Each note gets a verdict and a fixture/brief pointer.
+The assignment brief in `task.html` and the supplied fixtures define the intended behavior. “Follows” below means the checked-in implementation follows that decision; it does not mean untested UI behavior was manually verified.
 
-| # | Unverified note | Verdict | Evidence / reason |
+| # | Unverified note | Verdict | Evidence and implementation status |
 |---:|---|---|---|
-| 1 | If the dump already has `visible`, skip the schedule check. | **REJECT** | `src/fixtures/catalog.official.json` contains all item IDs in `visible`, including `item_lunch` and `item_soldout`; `context.sample.json` is 23:00 Tuesday in Sydney and the lunch schedule is 11:00–14:30. Recompute visibility. |
-| 2 | Put text search in the agent so every surface matches. | **REJECT** | Brief `task.html`, “Search, theme and scrolling stay in the client.” Inspector search filters the resolved visible IDs without changing agent output. |
-| 3 | In hybrid, the server prices and the client filters, because pricing is the expensive part. | **REJECT** | Brief mode table in `task.html`: hybrid = server schedule/stock, client price/tax. |
-| 4 | If the server fails, return an empty menu so we never sell stale stock. | **REJECT** | Brief `task.html` requires local resolution from the last cached catalog on failure/timeout and an error only when there is no cache. |
-| 5 | Retry the server 3 times, 3s each, before falling back. | **REJECT** | Brief `task.html`: any server call has a 3s **total** budget. Resolver makes one call, then falls back. |
-| 6 | `available: true` is enough to show an item. | **REJECT** | `catalog.official.json` has `item_soldout.available: true` but `stock: 0`; the menu must exclude it. Schedule and order-type placement are also checked. |
-| 7 | Dump prices are dollars; multiply by 100. | **REJECT** | Build contract in `task.html` explicitly requires integer cents. Values `1450`, `1299`, `1099` are consumed as cents; output is formatted as AUD only in the inspector. |
-| 8 | Store time is UTC; ignore the timezone. | **REJECT** | `store.json` says `Australia/Sydney`, and both context fixtures use that timezone. `Intl.DateTimeFormat` evaluates schedule in the context's IANA timezone. |
-| 9 | Delivery and collection share one price. | **REJECT** | `catalog.official.json` has burger delivery 1299 and collection 1099. Each placement is resolved separately. |
-| 10 | Dump prices exclude tax; add GST on top. | **REJECT** | `store.json` says `tax.inclusive: true`; gross is the listed price and tax is extracted from gross. |
-| 11 | Every item takes the store tax rate. | **REJECT** | `catalog.official.json` gives `item_water.tax_class: "exempt"`; its tax is 0. |
-| 12 | Truncate tax to whole cents. | **REJECT** | Brief `task.html` explicitly says round tax to the nearest cent, half up. `roundRatioHalfUp` uses integer arithmetic. |
-| 13 | For preorders, check the schedule at `now`. | **REJECT** | Brief `task.html` says when `preorder_slot` is set, judge schedule at the slot. `context.preorder.sample.json` makes lunch eligible at 12:30 Wednesday Sydney time. |
+| 1 | If the dump already has `visible`, skip the schedule check. | **REJECT** | `src/fixtures/catalog.official.json` lists lunch and zero-stock pudding as visible, while `src/fixtures/context.sample.json` evaluates at 23:00 Sydney and lunch is scheduled only 11:00–14:30. `resolveAvailability` in `src/domain/resolver.ts` ignores raw `visible` and calls `isWithinSchedule`. **Follows.** |
+| 2 | Put text search in the agent so every surface matches. | **REJECT** | `task.html` says search stays in the client. `MenuResults.tsx` filters resolved visible IDs by item name; no domain module accepts a search term. **Follows.** |
+| 3 | In hybrid, the server prices and the client filters, because pricing is the expensive part. | **REJECT** | `task.html` assigns schedule/stock to server and price/tax to client in hybrid mode. `resolveMenu` in `src/domain/agent.ts` calls `server.resolveAvailability` then `calculateClientPrices` using the cache. **Follows.** |
+| 4 | If the server fails, return an empty menu so we never sell stale stock. | **REJECT** | `task.html` requires recomputation from the cached catalog. `localOrNoCache` in `agent.ts` runs `resolveLocal` with the current context when a cache exists; without one, it throws `NO_CACHE`. **Follows for a valid context; a local validation error still rejects.** |
+| 5 | Retry the server 3 times, 3s each, before falling back. | **REJECT** | `task.html` requires one 3-second total budget. `withServerBudget` races one operation against 3,000 ms and `resolveMenu` makes no retry. **Follows; the losing operation is not cancelled.** |
+| 6 | `available: true` is enough to show an item. | **REJECT** | `src/fixtures/catalog.official.json` gives `item_soldout` `available: true` and `stock: 0`. `resolveAvailability` excludes it, adds it to `oos`, then applies schedule and placement checks to other items. **Follows.** |
+| 7 | Dump prices are dollars; multiply by 100. | **REJECT** | `task.html` requires integer cents; fixture prices include `1450`, `1299`, and `1099`. `calculatePriceAndTax` operates on these values directly, and only `MenuResults.tsx` divides by 100 for formatting. **Follows.** |
+| 8 | Store time is UTC; ignore the timezone. | **REJECT** | `src/fixtures/store.json` and both context fixtures specify `Australia/Sydney`. `isWithinSchedule` formats the evaluation instant using `ctx.timezone`; the inspector supplies the store timezone. **Follows.** |
+| 9 | Delivery and collection share one price. | **REJECT** | `item_burger` in `src/fixtures/catalog.official.json` has delivery price 1299 and collection price 1099. `calculateClientPrices` selects the matching placement. **Follows.** |
+| 10 | Dump prices exclude tax; add GST on top. | **REJECT** | `src/fixtures/store.json` sets `tax.inclusive: true`. `calculatePriceAndTax` keeps the fixture price as `gross` and extracts tax; the exclusive branch exists but is not selected by supplied store data. **Follows.** |
+| 11 | Every item takes the store tax rate. | **REJECT** | `item_water.tax_class` is `exempt` in `src/fixtures/catalog.official.json`. `calculatePriceAndTax` returns tax 0 for `exempt`. **Follows.** |
+| 12 | Truncate tax to whole cents. | **REJECT** | `task.html` requires nearest-cent, half-up rounding. `roundRatioHalfUp` in `pricing.ts` uses integer arithmetic; `tests/menu-agent.test.ts` includes exact half cases. **Follows.** |
+| 13 | For preorders, check the schedule at `now`. | **REJECT** | `src/fixtures/context.preorder.sample.json` provides a Wednesday 12:30 Sydney preorder slot. `getTargetDate` in `time.ts` selects `preorder_slot || now`, making lunch eligible. **Follows.** |

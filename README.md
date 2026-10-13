@@ -1,33 +1,31 @@
 # Menu Agent
 
-A fixture-backed TypeScript menu resolver with a responsive web inspector. The in-process server stub simulates server responses, delays and failures; no live vendor or third-party service is used.
+Fixture-backed TypeScript menu resolver plus a React inspector. It recalculates delivery and collection visibility from stock, availability, schedules, and placements, then calculates per-item gross and tax. The only server implementation is an in-process fixture stub with configurable failure and delay.
 
 ## Run
 
-Requires Node.js and npm. Install dependencies once:
+Use a Node version supported by the installed Vite release (Vite 7.3.7 requests Node 20.19+ or 22.12+). Install dependencies if `node_modules` is absent:
 
 ```bash
 npm install
 ```
 
-Run the agent in one terminal to resolve and print the sample preorder menu:
+Run the fixture agent (preorder context):
 
 ```bash
 npm run agent
 ```
 
-Run the web inspector in another terminal:
+Start the inspector:
 
 ```bash
 npm run dev
 ```
 
-Open the local URL printed by Vite. The inspector supports `?mode=local|hybrid|remote&orderType=delivery|collection`, store-timezone scheduling, preorder evaluation, search, server failure/delay simulation, and cache clear/restore. Server calls have one 3-second budget; on failure/timeout, the menu is recomputed locally from cache, or an error is shown if no cache exists.
+Open the local URL printed by Vite. The inspector lets you choose local/hybrid/remote mode, delivery/collection, a Sydney evaluation time or preorder slot, simulated server failure/delay, and an in-memory cache. Search filters already resolved visible items. `mode` and `orderType` initialize from, and are updated in, the query string.
 
-## Verify
+`npm test` runs the Vitest domain suite; `npm run build` type-checks and creates a production build. Actual verification outcomes and environment limitations are recorded in `AI-NOTES.md`.
 
-Run `npm test` and `npm run build`; record the actual results in `AI-NOTES.md`. Check the inspector at 390px width.
+## Not implemented
 
-## Scope
-
-Not built: live vendor/API integration, a production backend, authentication, NLP, deployment, multiple stores, a native Expo app/Maestro flows, or persistent disk cache. Web was chosen, so Maestro flows are not applicable. See `docs/FIELD-MAPPING.md` and `docs/CONFLICTS.md` for field mapping and verdicts on all 13 working notes.
+There is no live vendor integration, production backend, persistent cache, authentication, multiple-store support, checkout/modifier selection, NLP, deployment, Expo app, or Maestro flow. The remote and hybrid paths use the same fixture-backed domain engine through the in-process stub, so they do not demonstrate independently deployed server rules.
